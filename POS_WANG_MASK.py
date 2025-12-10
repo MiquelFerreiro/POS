@@ -19,60 +19,25 @@ mp_face_mesh = mp.solutions.face_mesh
 # Índices de puntos relevantes (frente + mejillas)
 
 
-def _process_video(frames):
-    """Calculates the average value of each frame."""
-    RGB = []
-    for frame in frames:
-        summation = np.sum(np.sum(frame, axis=0), axis=0)
-        RGB.append(summation / (frame.shape[0] * frame.shape[1]))
-    return np.asarray(RGB)
-
-def get_skin_mask_mediapipe(frame):
-    h, w, _ = frame.shape
-    with mp_face_mesh.FaceMesh(
-            static_image_mode=True,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5) as face_mesh:
-
-        results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        if not results.multi_face_landmarks:
-            return np.ones((h, w), dtype=np.uint8)  # fallback: sin mascara
-
-        face = results.multi_face_landmarks[0]
-        
-        # obtener coordenadas de región de piel
-        points = []
-
-        ROI_IDX = []
-        
-        # for idx in ROI_IDX:
-        #     x = int(face.landmark[idx].x * w)
-        #     y = int(face.landmark[idx].y * h)
-        #     points.append([x, y])
-
-        # points = np.array(points, dtype=np.int32)
-
-        mask = np.zeros((h, w), dtype=np.uint8)
-        # cv2.fillConvexPoly(mask, points, 255)
-
-        points = np.array([[int(lmk.x * w), int(lmk.y * h)] 
-                   for lmk in face.landmark])
-        hull = ConvexHull(points)
-        hull_points = points[hull.vertices]
-        cv2.fillConvexPoly(mask, hull_points, 255)
-
-
-        # suavizar bordes
-        mask = cv2.GaussianBlur(mask, (25, 25), 0)
-
-        return mask
-
+# def _process_video(frames):
+#     """Calculates the average value of each frame."""
+#     RGB = []
+#     for frame in frames:
+#         summation = np.sum(np.sum(frame, axis=0), axis=0)
+#         RGB.append(summation / (frame.shape[0] * frame.shape[1]))
+#     return np.asarray(RGB)
 
 def _process_video_mediapipe(frames):
     RGB = []
+
+    face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=True,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5)
+    
     for frame in frames:
-        mask = get_skin_mask_mediapipe(frame)
+        mask = get_skin_mask(frame, face_mesh)
 
         skin_pixels = frame[mask > 0]
 
@@ -84,6 +49,60 @@ def _process_video_mediapipe(frames):
         RGB.append(avg)
 
     return np.asarray(RGB)
+
+def generateMaskFromPoints(ROI, face, w, h):
+    points = []
+    for current_point in ROI:
+        x = int(face.landmark[current_point].x * w)
+        y = int(face.landmark[current_point].y * h)
+        points.append([x, y])
+
+    mask = np.zeros((h, w), dtype=np.uint8)
+    points = np.array(points, dtype=np.int32)
+    cv2.fillConvexPoly(mask, points, 255)
+
+    return mask
+
+def get_skin_mask(frame, face_mesh):
+
+    h, w, _ = frame.shape
+
+    results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    if not results.multi_face_landmarks:
+        print("Error: Sin máscara")
+        return np.ones((h, w), dtype=np.uint8)  # fallback: sin mascara
+
+    face = results.multi_face_landmarks[0]
+
+    ROIS = [
+        # FRENTE
+        #[104, 103, 67, 109, 10, 338, 297, 332, 333, 299, 337, 151, 108, 69]
+
+        #MEJILLA IZQ
+        #, [206, 216, 214, 192, 147, 123, 117, 118, 101, 36]
+        #, [206, 216, 207, 187, 123, 117, 118, 101, 36]
+        #, [206, 205, 50, 118, 101, 36]
+        #, [206, 205, 50, 117, 118, 119, 100, 142, 129, 203]
+
+        #MEJILLA DER
+        #, [358, 371, 329, 348, 347, 280, 425, 426, 423]
+
+        #FULL FACE
+        list(range(468))
+        
+    ]
+ 
+    final_mask = np.zeros((h, w), dtype=np.uint8)
+    
+    for ROI in ROIS:
+        current_mask = generateMaskFromPoints(ROI, face, w, h)
+        final_mask = cv2.bitwise_or(final_mask, current_mask)
+
+    # suavizar bordes
+    final_mask = cv2.GaussianBlur(final_mask, (25, 25), 0)
+
+    return final_mask
 
 
 def POS_WANG_MASK(frames, fs):
