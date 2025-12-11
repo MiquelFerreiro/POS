@@ -92,7 +92,7 @@ def get_skin_mask(frame, face_mesh):
         list(range(468))
         
     ]
- 
+
     final_mask = np.zeros((h, w), dtype=np.uint8)
     
     for ROI in ROIS:
@@ -105,7 +105,7 @@ def get_skin_mask(frame, face_mesh):
     return final_mask
 
 
-def POS_WANG_MASK(frames, fs):
+def POS_WANG_MASK(frames, fs = 60):
     WinSec = 1.6
     RGB = _process_video_mediapipe(frames)
     N = RGB.shape[0]
