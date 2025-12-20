@@ -16,6 +16,17 @@ from scipy.spatial import ConvexHull
 
 mp_face_mesh = mp.solutions.face_mesh
 
+class ROIS: 
+
+        OJO_IZQ = [26, 22, 23, 24, 110, 25, 130, 247, 30, 29, 27, 28, 56, 190, 243, 112]
+
+        OJO_DER = [253, 254, 339, 255, 359, 467, 260, 259, 257, 258, 286, 414, 463, 341, 256, 252]
+
+        BOCA = [57, 186, 92, 165, 167, 164, 393, 391, 322, 410, 287, 273, 335, 406, 313, 18, 83, 182, 106, 43]
+
+        FULL_FACE = [175, 171, 140, 170, 169, 135, 138, 215, 177, 137, 227, 34, 139, 71, 54, 103, 67, 109, 10, 338, 297, 332, 284,
+         301, 368, 264, 447, 366, 401, 435, 367, 364, 394, 395, 369, 396]
+
 # Índices de puntos relevantes (frente + mejillas)
 
 
@@ -75,32 +86,18 @@ def get_skin_mask(frame, face_mesh):
 
     face = results.multi_face_landmarks[0]
 
-    ROIS = [
-        # FRENTE
-        #[104, 103, 67, 109, 10, 338, 297, 332, 333, 299, 337, 151, 108, 69]
+    mask_ojos = cv2.bitwise_or(
+        generateMaskFromPoints(ROIS.OJO_IZQ, face, w, h),
+        generateMaskFromPoints(ROIS.OJO_DER, face, w, h),
+    )
 
-        #MEJILLA IZQ
-        #, [206, 216, 214, 192, 147, 123, 117, 118, 101, 36]
-        #, [206, 216, 207, 187, 123, 117, 118, 101, 36]
-        #, [206, 205, 50, 118, 101, 36]
-        #, [206, 205, 50, 117, 118, 119, 100, 142, 129, 203]
+    mask_excluded = cv2.bitwise_or(mask_ojos, generateMaskFromPoints(ROIS.BOCA, face, w, h))
 
-        #MEJILLA DER
-        #, [358, 371, 329, 348, 347, 280, 425, 426, 423]
+    mask_full = generateMaskFromPoints(ROIS.FULL_FACE, face, w, h)
 
-        #FULL FACE
-        list(range(468))
-        
-    ]
+    mask_excluded_inv = cv2.bitwise_not(mask_excluded)
 
-    final_mask = np.zeros((h, w), dtype=np.uint8)
-    
-    for ROI in ROIS:
-        current_mask = generateMaskFromPoints(ROI, face, w, h)
-        final_mask = cv2.bitwise_or(final_mask, current_mask)
-
-    # suavizar bordes
-    final_mask = cv2.GaussianBlur(final_mask, (25, 25), 0)
+    final_mask = cv2.bitwise_and(mask_full, mask_excluded_inv)
 
     return final_mask
 
