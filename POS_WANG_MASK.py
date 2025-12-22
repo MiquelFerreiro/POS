@@ -27,16 +27,9 @@ class ROIS:
         FULL_FACE = [175, 171, 140, 170, 169, 135, 138, 215, 177, 137, 227, 34, 139, 71, 54, 103, 67, 109, 10, 338, 297, 332, 284,
          301, 368, 264, 447, 366, 401, 435, 367, 364, 394, 395, 369, 396]
 
-# Índices de puntos relevantes (frente + mejillas)
-
-
-# def _process_video(frames):
-#     """Calculates the average value of each frame."""
-#     RGB = []
-#     for frame in frames:
-#         summation = np.sum(np.sum(frame, axis=0), axis=0)
-#         RGB.append(summation / (frame.shape[0] * frame.shape[1]))
-#     return np.asarray(RGB)
+def log_failed_video(patient, path, logfile="failed_masks.txt"):
+    with open(logfile, "a") as f:
+        f.write(f"{patient}, {path}\n")
 
 def _process_video_mediapipe(frames):
     RGB = []
@@ -48,7 +41,10 @@ def _process_video_mediapipe(frames):
     min_detection_confidence=0.5)
     
     for frame in frames:
-        mask = get_skin_mask(frame, face_mesh)
+        mask, mask_failed = get_skin_mask(frame, face_mesh)
+
+        if (mask_failed):
+            return 0, True
 
         skin_pixels = frame[mask > 0]
 
@@ -59,7 +55,7 @@ def _process_video_mediapipe(frames):
 
         RGB.append(avg)
 
-    return np.asarray(RGB)
+    return np.asarray(RGB), False
 
 def generateMaskFromPoints(ROI, face, w, h):
     points = []
@@ -78,11 +74,10 @@ def get_skin_mask(frame, face_mesh):
 
     h, w, _ = frame.shape
 
-    results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+    results = face_mesh.process(frame)
 
     if not results.multi_face_landmarks:
-        print("Error: Sin máscara")
-        return np.ones((h, w), dtype=np.uint8)  # fallback: sin mascara
+        return np.ones((h, w), dtype=np.uint8), True  # fallback: sin mascara
 
     face = results.multi_face_landmarks[0]
 
@@ -99,12 +94,22 @@ def get_skin_mask(frame, face_mesh):
 
     final_mask = cv2.bitwise_and(mask_full, mask_excluded_inv)
 
-    return final_mask
+    return final_mask, False
 
 
-def POS_WANG_MASK(frames, fs = 60):
+def POS_WANG_MASK(frames, fs = 60, patient=None, path=None):
+
+    mask_failed = False
+
     WinSec = 1.6
-    RGB = _process_video_mediapipe(frames)
+    RGB, mask_failed = _process_video_mediapipe(frames)
+
+    if (mask_failed):
+        print(f"Error en máscara: {patient}, {path}")
+        if (patient is not None):
+            log_failed_video(patient, path)
+        return 0
+
     N = RGB.shape[0]
     H = np.zeros((1, N))
     l = math.ceil(WinSec * fs)
