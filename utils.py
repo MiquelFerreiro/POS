@@ -9,6 +9,16 @@ from scipy import sparse
 from skimage.util import img_as_float
 from sklearn.metrics import mean_squared_error
 
+from scipy.signal import butter, filtfilt, czt
+
+def lowpass(signal, fs, cutoff):
+        b, a = butter(
+            N=4,
+            Wn=cutoff / (fs / 2),
+            btype='low'
+        )
+        return filtfilt(b, a, signal)
+
 
 def detrend(input_signal, lambda_value):
     signal_length = input_signal.shape[0]
@@ -33,3 +43,38 @@ def process_video(frames):
     RGB = np.asarray(RGB)
     RGB = RGB.transpose(1, 0).reshape(1, 3, -1)
     return np.asarray(RGB)
+
+def cut_bvp(bvp, t_start, t_end, fs = 60):
+
+    n_start = int(t_start * fs)
+    n_end   = int(t_end * fs) if t_end is not None else len(bvp)
+    return bvp[n_start:n_end]
+
+def CZT(bvp, fs = 60):
+    
+    cutoff = 4
+
+    # 1 — Low-pass filter
+    bvp_lpf = lowpass(bvp, fs, cutoff)
+
+    # 2 — Define the CZT frequency range you want to zoom into
+    f_min = 0.66   # 40 bpm
+    f_max = 3.0   # 180 bpm
+
+    # Number of CZT frequency bins (resolution)
+    M = 4096  # high spectral resolution
+
+    # 3 — Convert to angular frequencies for CZT
+    w = np.exp(-1j * 2 * np.pi * (f_max - f_min) / (M * fs))
+    a = np.exp(1j * 2 * np.pi * f_min / fs)
+
+    # 4 — Apply CZT
+    czt_vals = czt(bvp_lpf, m=M, w=w, a=a)
+
+    # 5 — Create the frequency axis
+    czt_freqs = np.linspace(f_min, f_max, M)
+
+    # 6 — Power spectrum
+    czt_power = np.abs(czt_vals)
+
+    return czt_power, czt_freqs
