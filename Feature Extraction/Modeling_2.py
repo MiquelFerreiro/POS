@@ -28,55 +28,6 @@ label_map = {
     "Q9": "Q9: ↓Arousal ↑Val",
 }
 
-class Timestamps:
-    Q1_1 = [[9, 14],[14, 19]]
-    Q1_2 = [[24, 29]]
-
-    Q2_1 = [[1, 6],[6, 11]]
-    Q2_2 = [[7, 12], [12, 17]]
-
-    Q3_1 = [[14, 19], [19, 24]]
-    Q3_2 = [[34, 39], [40, 44], [45, 49]]
-
-    Q4_1 = [[9, 14], [16, 21]]
-    Q4_2 = [[10, 15], [16, 21]]
-
-    Q5_1 = [[18, 23], [10, 15]]
-    Q5_2 = [[13, 18], [5, 10]]
-
-    Q6_1 = [[80, 85], [85, 90]]
-    Q6_2 = [[10, 15], [18, 23]]
-
-    Q7_1 = [[43, 48], [30, 35]]
-    Q7_2 = [[36, 41], [41, 46]]
-
-    Q8_1 = [[12, 17], [17, 22]]
-    Q8_2 = [[7, 12], [12, 17]]
-
-    Q9_1 = [[15, 20], [25, 30]]
-    Q9_2 = [[13, 18], [19, 24]]
-
-paths = [
-    "Q1_1",
-    "Q1_2",
-    # "Q2_1",
-    # "Q2_2",
-    # "Q3_1",
-    # "Q3_2",
-    # "Q4_1",
-    # "Q4_2",
-    #"Q5_1",
-    #"Q5_2",
-    # "Q6_1",
-    # "Q6_2",
-    # "Q7_1",
-    # "Q7_2",
-    # "Q8_1",
-    # "Q8_2",
-    "Q9_1",
-    "Q9_2"
-]
-
 patients = list(range(1, 62))
 patients.remove(23)
 
@@ -91,10 +42,23 @@ class BVP:
         self.id = id
 
 
-def cut_bvp(bvp, t_start, t_end, fs = 60):
+# def cut_bvp(bvp, t_start, t_end, fs = 60):
 
+#     n_start = int(t_start * fs)
+#     n_end   = int(t_end * fs) if t_end is not None else len(bvp)
+#     return bvp[n_start:n_end]
+
+def cut_bvp(bvp, t_start, t_end, fs=60):
+    n = len(bvp)
+
+    # Convert time to sample indices
     n_start = int(t_start * fs)
-    n_end   = int(t_end * fs) if t_end is not None else len(bvp)
+    n_end = int(t_end * fs)
+
+    # Clamp to valid range
+    n_start = max(0, min(n_start, n))
+    n_end = max(0, min(n_end, n))
+
     return bvp[n_start:n_end]
 
 
@@ -147,7 +111,7 @@ def get_label(path):
     else:
         return "LowArousal"
 
-def getmodelresults(timestamps):
+def getmodelresults(timestamps, paths):
 
     fs = 60  # sampling rate
 
