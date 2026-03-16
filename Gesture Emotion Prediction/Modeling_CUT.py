@@ -65,6 +65,11 @@ def getmodelresults(timestamps, quadrants):
                     # features[f"{col}_std"] = df_window[col].std()
                     # features[f"{col}_max"] = df_window[col].max()
 
+                # for col in au_cols:
+                #     features[f"{col}_mean"] = df_window[col].mean()
+                #     features[f"{col}_std"] = df_window[col].std()
+                #     features[f"{col}_max"] = df_window[col].max()
+
             # example label extraction
             label = get_label(quadrant)   # Q1, Q2, Q3...
 
