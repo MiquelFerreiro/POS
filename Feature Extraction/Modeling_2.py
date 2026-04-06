@@ -100,8 +100,20 @@ def compute_bvp_short_window_features(bvp_signal, fs):
     return features
 
 def get_label(path):
-    q = path.split("_")[0]  # "Q3_2" → "Q3"
-    return label_map[q]
+    q = path.split("_")[0]
+
+    if q in ["Q1", "Q2", "Q3"]:
+        return "High Arousal"
+    
+    if q in ["Q4", "Q5", "Q6"]:
+        return "Neutral Arousal"
+    
+    else:
+        return "Low Arousal"
+
+# def get_label(path):
+#     q = path.split("_")[0]  # "Q3_2" → "Q3"
+#     return label_map[q]
 
 # def get_label(path):
 #     q = path.split("_")[0]
